@@ -63,5 +63,8 @@
     <string name="import_m3u_success">成功导入 %1$d 个电台</string>
     <string name="import_m3u_failed">导入失败: %1$s</string>
     <string name="import_m3u_no_valid">未找到有效的电台信息</string>
-    <string name="import_m3u_select_file">选择M3U文件</string>
+    <string name="import_m3u_select_file">导入M3U文件</string>
+    <string name="export_m3u_title">导出M3U文件</string>
+    <string name="export_m3u_success">成功导出 %1$d 个电台</string>
+    <string name="export_m3u_failed">导出失败: %1$s</string>
 </resources>

@@ -263,13 +263,22 @@ class PlayerFullscreenFragment : Fragment() {
                 val imageView = view.findViewById<ImageView>(R.id.imageViewArt)
                 if (currentStation?.logoUrl?.isNotEmpty() == true) {
                     try {
-                        android.graphics.BitmapFactory.decodeStream(
-                            android.net.Uri.parse(currentStation?.logoUrl).let { uri ->
-                                context.contentResolver.openInputStream(uri)
+                        val imageUrl = currentStation?.logoUrl ?: ""
+                        if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                try {
+                                    val url = java.net.URL(imageUrl)
+                                    val bitmap = android.graphics.BitmapFactory.decodeStream(url.openStream())
+                                    if (bitmap != null) {
+                                        imageView.setImageBitmap(bitmap)
+                                    } else {
+                                        imageView.setImageResource(R.drawable.ic_launcher_foreground)
+                                    }
+                                } catch (e: Exception) {
+                                    imageView.setImageResource(R.drawable.ic_launcher_foreground)
+                                }
                             }
-                        )?.let { bitmap ->
-                            imageView.setImageBitmap(bitmap)
-                        } ?: run {
+                        } else {
                             imageView.setImageResource(R.drawable.ic_launcher_foreground)
                         }
                     } catch (e: Exception) {

@@ -69,6 +69,10 @@ class MainActivity : AppCompatActivity() {
         uri?.let { parseM3UFile(it) }
     }
 
+    private val m3uFileSaverLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("audio/x-mpegurl")) { uri: Uri? ->
+        uri?.let { exportM3UFile(it) }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -487,6 +491,7 @@ class MainActivity : AppCompatActivity() {
         val autoPlayLastStationSwitch = dialogView.findViewById<androidx.appcompat.widget.SwitchCompat>(R.id.auto_play_last_station_switch)
         val autoFullscreenSwitch = dialogView.findViewById<androidx.appcompat.widget.SwitchCompat>(R.id.auto_fullscreen_switch)
         val importM3uButton = dialogView.findViewById<Button>(R.id.button_import_m3u)
+        val exportM3uButton = dialogView.findViewById<Button>(R.id.button_export_m3u)
 
         // 初始化音量滑块
         volumeSlider.value = stationStorage.getVolume()
@@ -542,6 +547,11 @@ class MainActivity : AppCompatActivity() {
             m3uFilePickerLauncher.launch("*/*")
         }
 
+        // 导出M3U播放列表按钮监听器
+        exportM3uButton.setOnClickListener {
+            exportStationsToM3U()
+        }
+
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
             .setPositiveButton("确定") { _, _ ->
@@ -590,13 +600,13 @@ class MainActivity : AppCompatActivity() {
             contentResolver.openInputStream(uri)?.use { inputStream ->
                 val stations = mutableListOf<Station>()
                 val lines = inputStream.bufferedReader().readLines()
-                
+
                 var currentName = ""
                 var currentLogoUrl = ""
-                
+
                 for (line in lines) {
                     val trimmedLine = line.trim()
-                    
+
                     when {
                         trimmedLine.startsWith("#EXTINF:") -> {
                             // 提取电台名称
@@ -630,7 +640,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 }
-                
+
                 if (stations.isNotEmpty()) {
                     // 添加所有解析到的电台
                     var addedCount = 0
@@ -640,7 +650,7 @@ class MainActivity : AppCompatActivity() {
                             addedCount++
                         }
                     }
-                    
+
                     if (addedCount > 0) {
                         loadStations()
                         Toast.makeText(
@@ -668,6 +678,71 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(
                 this,
                 getString(R.string.import_m3u_failed, e.message ?: "未知错误"),
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    /**
+     * 导出电台列表到M3U文件
+     */
+    private fun exportStationsToM3U() {
+        try {
+            val stations = stationStorage.getStations()
+            if (stations.isEmpty()) {
+                Toast.makeText(
+                    this,
+                    "当前没有可导出的电台",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return
+            }
+
+            val fileName = "radio_stations_${System.currentTimeMillis()}.m3u"
+            m3uFileSaverLauncher.launch(fileName)
+        } catch (e: Exception) {
+            Log.e(TAG, "启动文件保存失败", e)
+            Toast.makeText(
+                this,
+                getString(R.string.export_m3u_failed, e.message ?: "未知错误"),
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    /**
+     * 写入M3U内容到文件
+     */
+    private fun exportM3UFile(uri: Uri) {
+        try {
+            contentResolver.openOutputStream(uri)?.use { outputStream ->
+                val writer = outputStream.bufferedWriter()
+                val stations = stationStorage.getStations()
+
+                writer.write("#EXTM3U\n")
+
+                stations.forEach { station ->
+                    // 写入电台信息
+                    writer.write("#EXTINF:-1,${station.name}\n")
+                    if (station.logoUrl.isNotEmpty()) {
+                        writer.write("#EXTIMG:${station.logoUrl}\n")
+                    }
+                    writer.write("${station.url}\n")
+                }
+
+                writer.flush()
+            }
+
+            Toast.makeText(
+                this,
+                getString(R.string.export_m3u_success, stationStorage.getStations().size),
+                Toast.LENGTH_LONG
+            ).show()
+        } catch (e: Exception) {
+            Log.e(TAG, "写入M3U文件失败", e)
+            Toast.makeText(
+                this,
+                getString(R.string.export_m3u_failed, e.message ?: "未知错误"),
                 Toast.LENGTH_LONG
             ).show()
         }
